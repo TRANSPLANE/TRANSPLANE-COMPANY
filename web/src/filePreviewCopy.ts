@@ -1,0 +1,38 @@
+import { localized } from "./locale";
+
+export const filePreviewCopy = localized(
+  {
+    preview: "预览",
+    version: "版本",
+    download: "下载原文件",
+    downloading: "正在下载",
+    close: "关闭预览",
+    loading: "正在读取文件",
+    failed: "无法读取文件，请重试。",
+    retry: "重试",
+    forbidden: "当前凭据没有读取这份资料的权限。",
+    unavailable: "这份文件或所选版本暂时无法读取。",
+    unsupported: "此格式暂不支持预览，可下载原文件查看。",
+    tooLarge: "文件超出预览大小限制，可下载原文件查看。",
+    invalidContent: "文件内容无法安全预览，可下载原文件查看。",
+    pdfFallback: "若浏览器未显示 PDF，请下载原文件查看。",
+    downloadFailed: "下载失败，请重试。",
+  },
+  {
+    preview: "Preview",
+    version: "Version",
+    download: "Download original",
+    downloading: "Downloading",
+    close: "Close preview",
+    loading: "Loading file",
+    failed: "The file could not be loaded. Please retry.",
+    retry: "Retry",
+    forbidden: "This credential cannot read this document.",
+    unavailable: "This file or the selected version is unavailable.",
+    unsupported: "This format cannot be previewed. Download the original to view it.",
+    tooLarge: "This file exceeds the preview size limit. Download the original to view it.",
+    invalidContent: "This file cannot be previewed safely. Download the original to view it.",
+    pdfFallback: "If your browser does not display the PDF, download the original to view it.",
+    downloadFailed: "Download failed. Please retry.",
+  },
+);

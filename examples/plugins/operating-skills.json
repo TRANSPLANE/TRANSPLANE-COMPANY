@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "operating-skills",
+  "name": "经营决策复盘",
+  "version": "1.0.0",
+  "author": "TransPlane Company",
+  "description": "提供可按需读取、可复制到公司的决策复盘规范",
+  "api_version": 1,
+  "permissions": [],
+  "contributions": {
+    "skills": [
+      {
+        "id": "decision-review",
+        "name": "decision-review",
+        "title": "经营决策复盘",
+        "description": "对照经营选择与固定历史结果，保留事实、假设和下一次决策依据。",
+        "body": "# 经营决策复盘\n\n读取当时的事件、保存选择、精确结果引用和公司快照。先写出预期结果，再对照取得的结果与资源变化。\n\n区分事实、分析和仍未验证的假设；不从单次结果推断普遍规律。真实经营使用实际记录，模拟结果保留虚构来源。\n\n提出下一次有边界的经营取舍。只有用户要求沉淀经验时，才将支持的做法保存为公司经验 Skill，并关联准确来源版本。",
+        "enabled": true,
+        "type": "procedure",
+        "tags": ["复盘", "决策"],
+        "modes": ["real", "simulation"]
+      }
+    ]
+  },
+  "data_policy": { "retention": "preserve", "export": "manifest" }
+}

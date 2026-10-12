@@ -1,0 +1,29 @@
+name: transplane-company
+services:
+  company:
+    build: .
+    ports:
+      - "127.0.0.1:${COMPANY_PORT:-4177}:4177"
+    environment:
+      COMPANY_DATA_DIR: /data
+      COMPANY_DATABASE_URL: ${COMPANY_DATABASE_URL:-}
+    volumes:
+      - ./company-data:/data
+    restart: unless-stopped
+  postgres:
+    image: postgres:17.6-bookworm
+    profiles: [postgres]
+    environment:
+      POSTGRES_USER: company
+      POSTGRES_PASSWORD: ${COMPANY_POSTGRES_PASSWORD:-}
+      POSTGRES_DB: company
+    volumes:
+      - company-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U company -d company"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+volumes:
+  company-postgres:

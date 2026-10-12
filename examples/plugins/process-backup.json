@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "id": "process-backup",
+  "name": "独立进程备份副本",
+  "version": "1.0.0",
+  "author": "TransPlane Company",
+  "description": "通过独立 Python 进程复制和校验快照",
+  "api_version": 1,
+  "permissions": ["backup.deliver"],
+  "contributions": {"backup_destination": {"kind": "process"}},
+  "runtime": {"command": ["python", "-X", "utf8", "examples/plugins/backup_destination.py"]},
+  "data_policy": {"retention": "preserve", "export": "destination-files"}
+}

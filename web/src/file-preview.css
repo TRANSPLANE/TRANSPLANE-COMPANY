@@ -1,0 +1,31 @@
+.modal.wide.file-preview-dialog { width: min(960px, calc(100% - 32px)); max-width: calc(100% - 24px); }
+.file-preview-dialog .modal-header { min-width: 0; }
+.file-preview-dialog .modal-header h2 { min-width: 0; overflow-wrap: anywhere; }
+.file-preview-dialog .modal-header .icon-button { flex: 0 0 auto; }
+.file-preview-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 20px; color: var(--text-secondary); font-size: var(--text-sm); }
+.file-preview-content { min-width: 0; max-width: 100%; }
+.file-preview-loading { display: flex; gap: 10px; align-items: center; justify-content: center; min-height: 160px; color: var(--text-secondary); }
+.file-preview-image { display: block; max-width: 100%; max-height: 60dvh; height: auto; margin: 0 auto; object-fit: contain; }
+.file-preview-text { max-width: 100%; min-width: 0; padding: 16px; border: 1px solid var(--border-control); background: var(--surface-pane); white-space: pre-wrap; overflow-wrap: anywhere; font: 0.875rem/1.7 var(--font-mono); }
+.file-preview-pdf { display: block; width: 100%; height: min(60dvh, 720px); min-height: 240px; border: 1px solid var(--border-control); background: var(--surface-pane); }
+.file-preview-fallback { line-height: 1.8; color: var(--text-secondary); margin: 16px 0; }
+.file-preview-actions { display: flex; flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--border-control); padding-top: 16px; margin-top: 20px; }
+.file-preview-actions .secondary-button { display: flex; align-items: center; gap: 8px; }
+.file-preview-error { color: var(--text-error); line-height: 1.8; }
+.file-row .file-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.file-row .file-actions .text-button { min-height: 44px; }
+.file-list .file-row { gap: 12px 18px; }
+.file-list .file-row:last-child { border-bottom: 0; }
+.file-main > .record-link { max-width: 100%; }
+.file-detail-actions { margin: 0 0 20px; }
+.revision-list > div { flex-wrap: wrap; }
+.file-history-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-inline-start: auto; }
+.revision-list > div .file-history-actions .text-button { margin-left: 0; }
+@media (max-width: 480px) {
+  .file-row { flex-wrap: wrap; }
+  .file-row .file-main { flex-basis: calc(100% - 64px); }
+  .file-row .file-actions { margin-inline-start: auto; }
+  .modal.wide.file-preview-dialog { width: calc(100% - 24px); padding: 16px 12px; }
+  .file-list .file-extension { display: flex; }
+  .file-list .file-size { display: block; margin-inline-start: 62px; }
+}

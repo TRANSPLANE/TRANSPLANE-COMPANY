@@ -1,0 +1,233 @@
+name: Build release packages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-build-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_INCREMENTAL: '0'
+  CARGO_TERM_COLOR: always
+
+jobs:
+  web:
+    name: Build shared game interface
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Compile interface
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: game-interface
+          path: web/dist/
+          retention-days: 7
+          if-no-files-found: error
+
+  native:
+    name: Package ${{ matrix.platform }}
+    needs: web
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x86_64
+            target: x86_64-pc-windows-msvc
+            runner: windows-2022
+            msvc_arch: x64
+          - platform: windows-aarch64
+            target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+            msvc_arch: arm64
+          - platform: macos-x86_64
+            target: x86_64-apple-darwin
+            runner: macos-15-intel
+          - platform: macos-aarch64
+            target: aarch64-apple-darwin
+            runner: macos-15
+          - platform: linux-x86_64
+            target: x86_64-unknown-linux-gnu
+            runner: ubuntu-22.04
+          - platform: linux-aarch64
+            target: aarch64-unknown-linux-gnu
+            runner: ubuntu-22.04-arm
+          - platform: linux-x86_64-musl
+            target: x86_64-unknown-linux-musl
+            runner: ubuntu-22.04
+            musl: true
+          - platform: linux-aarch64-musl
+            target: aarch64-unknown-linux-musl
+            runner: ubuntu-22.04-arm
+            musl: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: game-interface
+          path: web/dist/
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.98.1'
+          targets: ${{ matrix.target }}
+      - name: Remap build paths and use standalone Windows runtime
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os, sys
+          from pathlib import Path
+          paths = [(Path.cwd(), '/source'), (Path.home(), '/build-user')]
+          paths += [(Path(os.environ.get('CARGO_HOME', Path.home() / '.cargo')), '/cargo')]
+          paths += [(Path(os.environ.get('RUSTUP_HOME', Path.home() / '.rustup')), '/rustup')]
+          flags = ['--remap-path-prefix=' + str(path) + '=' + replacement for path, replacement in paths]
+          if sys.platform == 'win32':
+              flags.append('-Ctarget-feature=+crt-static')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              output.write('CARGO_ENCODED_RUSTFLAGS=' + chr(31).join(flags) + '\n')
+          PY
+      - name: Configure Windows C compiler
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.msvc_arch }}
+      - name: Install native musl compiler
+        if: matrix.musl == true
+        run: |
+          sudo apt-get update && sudo apt-get install -y musl-tools
+          TARGET_KEY="$(echo '${{ matrix.target }}' | tr '[:lower:]-' '[:upper:]_')"
+          echo "CARGO_TARGET_${TARGET_KEY}_LINKER=musl-gcc" >> "$GITHUB_ENV"
+          echo "CC_$(echo '${{ matrix.target }}' | tr '-' '_')=musl-gcc" >> "$GITHUB_ENV"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+          cache-on-failure: true
+      - name: Build Windows programs after artifact cleanup
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CARGO_BUILD_TARGET: ${{ matrix.target }}
+        run: ./scripts/build-company.ps1 -BuildProfile Release -SkipWeb
+      - name: Build Unix programs after artifact cleanup
+        if: runner.os != 'Windows'
+        env:
+          MACOSX_DEPLOYMENT_TARGET: '11.0'
+        run: bash scripts/build-company.sh --skip-web --target '${{ matrix.target }}'
+      - name: Package public user assets
+        shell: bash
+        run: |
+          VERSION="$(python -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["package"]["version"])')"
+          DESTINATION="target/packages/TRANSPLANE-COMPANY-v${VERSION}-${{ matrix.platform }}"
+          python scripts/package.py --version "$VERSION" --platform '${{ matrix.platform }}' --binary-dir 'target/${{ matrix.target }}/release' --destination "$DESTINATION"
+          python scripts/release-smoke.py --binary-dir "$DESTINATION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: |
+            target/packages/*.zip
+            target/packages/*.tar.gz
+            target/packages/*.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  linux-cross:
+    name: Package ${{ matrix.platform }} with QEMU checks
+    needs: web
+    runs-on: ubuntu-22.04
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-armv7
+            target: armv7-unknown-linux-gnueabihf
+            packages: gcc-arm-linux-gnueabihf qemu-user
+            linker: arm-linux-gnueabihf-gcc
+            runner: qemu-arm -L /usr/arm-linux-gnueabihf
+          - platform: linux-i686
+            target: i686-unknown-linux-gnu
+            packages: gcc-multilib qemu-user
+            linker: gcc -m32
+            runner: qemu-i386 -L /
+          - platform: linux-riscv64
+            target: riscv64gc-unknown-linux-gnu
+            packages: gcc-riscv64-linux-gnu qemu-user
+            linker: riscv64-linux-gnu-gcc
+            runner: qemu-riscv64 -L /usr/riscv64-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: game-interface
+          path: web/dist/
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.98.1'
+          targets: ${{ matrix.target }}
+      - name: Remap build paths
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          paths = [(Path.cwd(), '/source'), (Path.home(), '/build-user')]
+          paths += [(Path(os.environ.get('CARGO_HOME', Path.home() / '.cargo')), '/cargo')]
+          paths += [(Path(os.environ.get('RUSTUP_HOME', Path.home() / '.rustup')), '/rustup')]
+          flags = ['--remap-path-prefix=' + str(path) + '=' + replacement for path, replacement in paths]
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              output.write('CARGO_ENCODED_RUSTFLAGS=' + chr(31).join(flags) + '\n')
+          PY
+      - name: Install cross toolchain and QEMU
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.packages }}
+      - name: Configure target linker
+        shell: bash
+        run: |
+          TARGET_KEY="$(echo '${{ matrix.target }}' | tr '[:lower:]-' '[:upper:]_')"
+          if [[ '${{ matrix.platform }}' == 'linux-i686' ]]; then
+            echo "CARGO_TARGET_${TARGET_KEY}_LINKER=gcc" >> "$GITHUB_ENV"
+            echo "CC_i686_unknown_linux_gnu=gcc" >> "$GITHUB_ENV"
+            echo "CFLAGS_i686_unknown_linux_gnu=-m32" >> "$GITHUB_ENV"
+          else
+            echo "CARGO_TARGET_${TARGET_KEY}_LINKER=${{ matrix.linker }}" >> "$GITHUB_ENV"
+            echo "CC_$(echo '${{ matrix.target }}' | tr '-' '_')=${{ matrix.linker }}" >> "$GITHUB_ENV"
+          fi
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+          cache-on-failure: true
+      - name: Cross compile after artifact cleanup
+        run: bash scripts/build-company.sh --skip-web --target '${{ matrix.target }}'
+      - name: Package and exercise under QEMU
+        shell: bash
+        run: |
+          VERSION="$(python -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["package"]["version"])')"
+          DESTINATION="target/packages/TRANSPLANE-COMPANY-v${VERSION}-${{ matrix.platform }}"
+          python scripts/package.py --version "$VERSION" --platform '${{ matrix.platform }}' --binary-dir 'target/${{ matrix.target }}/release' --destination "$DESTINATION"
+          python scripts/release-smoke.py --binary-dir "$DESTINATION" --runner '${{ matrix.runner }}'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: |
+            target/packages/*.tar.gz
+            target/packages/*.sha256
+          if-no-files-found: error
+          retention-days: 14

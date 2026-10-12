@@ -1,0 +1,93 @@
+.play-phase {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+.play-phase > span { font-family: var(--font-game); font-size: 1.25rem; line-height: 1.5; overflow-wrap: anywhere; }
+.play-phase > .text-button { min-height: 44px; }
+.mission-brief {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px 24px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border: 2px solid var(--game-frame);
+  background: var(--neutral-50);
+  min-width: 0;
+}
+.mission-current { display: flex; align-items: flex-start; flex: 1 1 320px; min-width: 0; gap: 10px; }
+.mission-current > svg { flex-shrink: 0; margin-top: 3px; }
+.mission-current > div { min-width: 0; flex: 1; }
+.mission-stage, .mission-label { display: block; font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.7; }
+.mission-stage { font-family: var(--font-game); font-size: 1.125rem; color: var(--text-primary); margin-bottom: 4px; }
+.mission-title { display: flex; align-items: baseline; gap: 8px; font-size: 1rem; font-weight: 600; line-height: 1.7; overflow-wrap: anywhere; }
+.mission-title > svg { flex-shrink: 0; align-self: center; }
+.mission-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 6px; font-size: var(--text-xs); }
+.mission-progress progress { display: block; width: 140px; max-width: 100%; height: 9px; accent-color: var(--accent); }
+.mission-log { flex: 0 1 230px; min-width: 0; font-size: var(--text-sm); }
+.mission-log > summary { cursor: pointer; min-height: 44px; padding-block: 4px; }
+.mission-log > summary > svg { vertical-align: middle; margin-inline: 4px 6px; }
+.mission-log > summary > span { overflow-wrap: anywhere; }
+.mission-log strong { margin-inline-start: 8px; font-family: var(--font-game); font-size: 1.5rem; font-weight: 400; }
+.mission-log ul { margin: 8px 0 14px; padding: 0; list-style: none; }
+.mission-log li { border-top: 1px solid var(--game-edge); padding-block: 9px; overflow-wrap: anywhere; }
+.mission-log li > span, .mission-log li > small { display: block; line-height: 1.65; }
+.mission-log li > small { color: var(--text-secondary); }
+.mission-log > a { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; }
+.agent-handoff-actions, .playbook-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.agent-handoff-actions > *, .playbook-actions > * { max-width: 100%; white-space: normal; text-align: start; overflow-wrap: anywhere; }
+.agent-handoff { margin-top: 14px; font-size: var(--text-sm); min-width: 0; }
+.agent-handoff > summary { cursor: pointer; min-height: 44px; padding-block: 10px; }
+.agent-handoff pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-body); font-size: var(--text-sm); line-height: 1.85; padding: 16px; border: 1px solid var(--game-edge); background: var(--neutral-50); margin-top: 6px; }
+.next-decision > .handoff-boundary, .selected-choice > .handoff-boundary { font-size: var(--text-xs); line-height: 1.8; color: var(--text-secondary); margin: 12px 0 0; }
+.play-world .narrative-outcomes > li { padding: 14px 16px; border: 2px solid var(--game-edge); background: var(--neutral-50); }
+.play-world .narrative-outcomes > li.outcome-success { background: var(--green-50); }
+.play-world .narrative-outcomes > li.outcome-failure { background: var(--red-50); }
+.play-world .narrative-outcomes > li > svg { flex-shrink: 0; }
+.playbook { min-width: 0; }
+.playbook-intro { display: flex; align-items: flex-start; gap: 14px; margin-block: 4px 20px; }
+.playbook-intro > svg { flex-shrink: 0; margin-top: 4px; }
+.playbook-intro > div { min-width: 0; }
+.playbook-intro strong { display: block; font-family: var(--font-game); font-size: 1.5rem; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
+.playbook-intro span { display: block; margin-block: 2px 8px; color: var(--text-secondary); font-size: var(--text-xs); }
+.playbook p { line-height: 1.85; overflow-wrap: anywhere; }
+.playbook-section { border-top: 2px solid var(--game-edge); margin-top: 22px; padding-top: 18px; }
+.playbook-section h3 { font-family: var(--font-game); font-size: 1.25rem; font-weight: 400; line-height: 1.5; margin-bottom: 12px; }
+.playbook-section > p { margin-bottom: 12px; }
+.playbook-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.playbook-steps li { display: flex; align-items: flex-start; gap: 14px; }
+.playbook-step-number { flex: 0 0 32px; border: 2px solid var(--game-frame); background: var(--neutral-50); text-align: center; font-family: var(--font-game); font-size: 1.5rem; line-height: 1.3; }
+.playbook-steps li > div { min-width: 0; }
+.playbook-steps strong { display: block; margin-bottom: 3px; }
+.playbook-steps p { color: var(--text-secondary); font-size: var(--text-sm); }
+.playbook-disclosure > summary { cursor: pointer; min-height: 44px; font-weight: 600; line-height: 1.8; padding-block: 6px; overflow-wrap: anywhere; }
+.playbook-disclosure > p:first-of-type { margin-top: 8px; }
+.playbook-chat { margin: 0 0 12px; padding: 0; list-style: none; display: grid; gap: 8px; }
+.playbook-chat li { background: var(--neutral-50); border-left: 3px solid var(--game-gold); padding: 10px 14px; line-height: 1.8; overflow-wrap: anywhere; }
+.playbook-chat q::before, .playbook-chat q::after { content: none; }
+@media (max-width: 650px) {
+  .play-phase { padding-inline: 5px; }
+  .mission-brief { padding: 12px; gap: 8px; }
+  .mission-current, .mission-log { flex: 1 1 100%; }
+  .mission-log { border-top: 1px solid var(--game-edge); padding-top: 5px; }
+  .mission-title { font-size: var(--text-sm); }
+  .agent-handoff pre { padding: 12px; }
+  .agent-handoff-actions { align-items: flex-start; }
+  .playbook-actions { align-items: stretch; }
+  .playbook-actions > button { flex: 1 1 100%; }
+  .playbook-intro { gap: 10px; }
+  .playbook-steps li { gap: 10px; }
+  .playbook-chat li { padding: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .playbook *, .mission-brief *, .play-phase *, .agent-handoff-actions * { transition: none; }
+}
+@media (forced-colors: active) {
+  .mission-brief, .mission-log li, .playbook-section, .playbook-step-number, .playbook-chat li, .agent-handoff pre, .play-world .narrative-outcomes > li { border-color: CanvasText; box-shadow: none; }
+  .mission-progress progress { accent-color: Highlight; }
+}

@@ -1,0 +1,8 @@
+target
+web/node_modules
+company-data
+.qa
+.git
+.env
+.env.*
+*.log

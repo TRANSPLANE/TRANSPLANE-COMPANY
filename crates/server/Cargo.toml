@@ -1,0 +1,28 @@
+[package]
+license.workspace = true
+repository.workspace = true
+name = "company-server"
+version.workspace = true
+edition = "2021"
+
+[dependencies]
+company-application = { path = "../application" }
+company-core = { path = "../core" }
+anyhow = "1"
+base64 = "0.22"
+axum = "0.8"
+form_urlencoded = "1"
+clap = { version = "4", features = ["derive", "env"] }
+mime_guess = "2"
+rust-embed = "8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["limit", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tempfile = "3"
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"

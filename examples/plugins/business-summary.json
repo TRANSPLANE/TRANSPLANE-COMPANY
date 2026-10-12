@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "api_version": 1,
+  "id": "business-summary",
+  "name": "业务概况",
+  "version": "1.0.0",
+  "author": "TransPlane Company",
+  "description": "从所授权公司的当前快照汇总付费客户与经营现金流",
+  "permissions": ["company.read"],
+  "runtime": {"command": ["python", "-X", "utf8", "examples/plugins/business_summary.py"], "idempotent": true},
+  "data_policy": {"retention": "preserve", "export": "company-backup"},
+  "contributions": {
+    "operation": {"description": "读取当前公司快照并保存业务概况", "input_schema": {"type": "object", "properties": {}, "additionalProperties": false}},
+    "guidance": ["该能力只读取已授权公司的当前快照", "输出保存数据版本和日期，后续经营变化后按需重新执行"],
+    "metrics": [{"id": "paying-customers", "label": "付费客户", "value_path": "paying_customers", "format": "number", "unit": "位"}],
+    "views": [{"id": "business-summary", "title": "业务概况", "fields": [
+      {"label": "经营净现金流", "value_path": "operating_net_minor", "format": "money"},
+      {"label": "数据版本", "value_path": "company_revision", "format": "number"},
+      {"label": "数据日期", "value_path": "as_of", "format": "text"}
+    ]}]
+  }
+}

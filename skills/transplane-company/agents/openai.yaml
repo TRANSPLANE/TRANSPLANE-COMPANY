@@ -1,0 +1,4 @@
+interface:
+  display_name: "TransPlane Company"
+  short_description: "Host company events, choices and results with your own Agent"
+  default_prompt: "Use $transplane-company to connect to my selected company, host an evidence-based business event, process my saved choice within existing permissions, and verify its recorded result."

@@ -1,0 +1,36 @@
+.plugins-page { min-width: 0; }
+.plugins-page .plugin-toolbar { display: flex; align-items: center; flex-direction: row; flex-wrap: wrap; gap: 8px 16px; margin: 0; min-width: 0; }
+.plugins-page .plugin-toolbar > button { max-width: 100%; min-height: 44px; white-space: normal; }
+.plugins-page .plugin-installed-section > .section-heading,
+.plugins-page .plugin-catalog-section > .section-heading { padding-inline: 16px; }
+.plugins-page .plugin-list { border-top: 0; }
+.plugins-page .plugin-item { align-items: flex-start; gap: 16px; padding: 24px 16px; border-bottom: 2px dotted var(--border-subtle); }
+.plugins-page .plugin-item:last-child { border-bottom: 0; }
+.plugins-page .plugin-icon { flex-shrink: 0; width: 48px; height: 48px; }
+.plugins-page .plugin-body { flex: 1; min-width: 0; }
+.plugins-page .plugin-title { align-items: baseline; gap: 8px 12px; }
+.plugins-page .plugin-title h3 { min-width: 0; max-width: 100%; margin: 0; font-family: var(--font-game); font-size: 1.5rem; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
+.plugins-page .plugin-title .number { overflow-wrap: anywhere; }
+.plugins-page .plugin-body > p { margin: 8px 0 0; line-height: 1.75; overflow-wrap: anywhere; }
+.plugins-page .plugin-meta { gap: 4px 16px; line-height: 1.75; }
+.plugins-page .plugin-meta > span { min-width: 0; max-width: 100%; }
+.plugins-page .plugin-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; max-width: 100%; margin: 0; }
+.plugins-page .plugin-actions > button { min-height: 44px; max-width: 100%; white-space: normal; }
+.plugins-page .plugin-actions .icon-button { flex-shrink: 0; width: 44px; }
+.plugins-page .plugin-installed-state { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--text-sm); }
+.plugins-page .plugin-access-note { margin: 0 0 24px; font-size: var(--text-sm); overflow-wrap: anywhere; }
+.plugins-page .plugin-installed-section > .empty,
+.plugins-page .plugin-catalog-section > .empty { margin-top: 0; border: 2px solid var(--game-edge); border-top: 0; background: var(--surface-raised); }
+@media (max-width: 900px) {
+  .plugins-page .plugin-item { flex-wrap: wrap; }
+  .plugins-page .plugin-body { flex-basis: calc(100% - 64px); }
+  .plugins-page .plugin-actions { flex-basis: 100%; margin-inline-start: 64px; }
+}
+@media (max-width: 440px) {
+  .plugins-page .plugin-item { padding-inline: 12px; gap: 12px; }
+  .plugins-page .plugin-icon { width: 40px; height: 40px; }
+  .plugins-page .plugin-body { flex-basis: calc(100% - 52px); }
+  .plugins-page .plugin-actions { margin-inline-start: 0; }
+  .plugins-page .plugin-installed-section > .section-heading,
+  .plugins-page .plugin-catalog-section > .section-heading { padding-inline: 12px; }
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "local-backup",
+  "name": "本地备份副本",
+  "version": "1.0.0",
+  "author": "TransPlane Company",
+  "description": "将内核生成的快照复制到主人选择的本地目录",
+  "api_version": 1,
+  "permissions": ["backup.deliver"],
+  "contributions": {"backup_destination": {"kind": "local"}},
+  "data_policy": {"retention": "preserve", "export": "destination-files"}
+}

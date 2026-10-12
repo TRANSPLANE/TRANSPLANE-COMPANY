@@ -1,0 +1,10 @@
+{
+  "operations": [
+    {"operation":"account.put","request":{"request_id":"sim-start-account","input":{"id":"main-account","name":"模拟启动资金","opening_balance_minor":1000000,"opening_on":"2026-10-01"}}},
+    {"operation":"business.put","request":{"request_id":"sim-product","input":{"id":"product","name":"微型订阅产品","type":"product","status":"active"}}},
+    {"operation":"goal.put","request":{"request_id":"sim-first-client-goal","input":{"id":"first-client","title":"获得首个付费客户","outcome":"验证一个明确的付费需求","status":"active","metric":"paid_customers","target":1}}},
+    {"operation":"route.put","request":{"request_id":"sim-initial-route","input":{"id":"company-route","title":"独立工作室的起点","story":"你有 ¥10,000 的模拟资金和一个未发布的产品。先验证付费需求，再决定投入方向。","goal_ids":["first-client"],"stages":[{"id":"validation","title":"验证需求","goal_ids":["first-client"]}]}}},
+    {"operation":"simulation_turn.put","request":{"request_id":"sim-opening-turn","input":{"id":"turn-1","title":"工作室已准备就绪","action":"完成启动资源与目标配置","story":"资金和产品已经就绪，第一项经营投入需要由你决定。","before_revision":1,"after_revision":5,"occurred_on":"2026-10-11","assumptions":["所有资金、客户与经营结果均为虚构"],"outcomes":[{"title":"首位客户","goal_id":"first-client","status":"ongoing","evidence":"当前尚未登记模拟付费客户"}]}}},
+    {"operation":"decision.put","request":{"request_id":"sim-opening-decision","input":{"id":"first-investment","title":"先验证需求，还是先发布产品？","situation":"你有 ¥10,000 的模拟资金，产品还未发布，也没有付费客户。先访谈可以帮助你理解谁愿意付费；先发布可以让用户试用，但会占用一部分资金。你准备怎么投入？","baseline_revision":6,"route_id":"company-route","stage_id":"validation","goal_ids":["first-client"],"allow_freeform":true,"status":"open","options":[{"id":"interviews","title":"先访谈潜在客户","description":"先了解一个具体需求，再决定产品范围。","assumptions":["访谈是否带来客户仍未知；任何实际费用需由 Agent 核实"]},{"id":"release","title":"投入最小版本发布","description":"用可试用的产品验证付费意愿。","estimated_cost_minor":400000,"assumptions":["¥4,000 是本场景的虚构预算，尚未支出；不代表市场报价或保证收入"]}]}}}
+  ]
+}

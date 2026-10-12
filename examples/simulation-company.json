@@ -1,0 +1,11 @@
+{
+  "id": "simulation-company",
+  "name": "独立工作室沙盘",
+  "description": "纯模拟经营游戏，所有资源与结果均为虚构。",
+  "currency": "CNY",
+  "timezone": "Asia/Shanghai",
+  "opening_date": "2026-10-01",
+  "mode": "simulation",
+  "simulation_date": "2026-10-11",
+  "subscription_tracking": true
+}

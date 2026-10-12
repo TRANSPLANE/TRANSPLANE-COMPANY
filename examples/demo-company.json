@@ -1,0 +1,10 @@
+{
+  "id": "demo-company",
+  "name": "演示公司",
+  "description": "显式导入的示例数据，不代表真实经营记录。",
+  "currency": "CNY",
+  "timezone": "Asia/Shanghai",
+  "opening_date": "2026-01-01",
+  "mode": "real",
+  "subscription_tracking": true
+}

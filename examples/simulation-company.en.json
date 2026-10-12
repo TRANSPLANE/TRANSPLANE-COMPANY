@@ -1,0 +1,11 @@
+{
+  "id": "simulation-company",
+  "name": "Independent Studio Sandbox",
+  "description": "Fictional company management game. All resources and results are simulated.",
+  "currency": "CNY",
+  "timezone": "Asia/Shanghai",
+  "opening_date": "2026-10-01",
+  "mode": "simulation",
+  "simulation_date": "2026-10-11",
+  "subscription_tracking": true
+}
