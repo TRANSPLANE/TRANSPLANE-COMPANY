@@ -26,7 +26,7 @@ English · [简体中文](README.zh-CN.md)
 
 ## Watch the game
 
-<video src="https://github.com/user-attachments/assets/4e689b9c-9296-4154-9348-57546275bdf6" width="100%" controls></video>
+<video src="https://github.com/user-attachments/assets/f03c6638-4631-4be5-8854-9555b18b68af" width="100%" controls></video>
 
 ## Your company, your next move
 
