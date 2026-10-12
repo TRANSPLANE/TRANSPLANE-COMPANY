@@ -117,7 +117,7 @@ jobs:
           echo "CC_$(echo '${{ matrix.target }}' | tr '-' '_')=musl-gcc" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.target }}
+          key: "${{ matrix.target }}${{ matrix.platform == 'linux-x86_64-musl' && '-alpine324' || '' }}"
           cache-on-failure: true
       - name: Build Windows programs after artifact cleanup
         if: runner.os == 'Windows'
@@ -144,16 +144,16 @@ jobs:
         shell: bash
         run: |
           VERSION="$(python -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["package"]["version"])')"
-          DESTINATION="target/packages/TRANSPLANE-COMPANY-v${VERSION}-${{ matrix.platform }}"
+          DESTINATION="${RUNNER_TEMP}/releases/TRANSPLANE-COMPANY-v${VERSION}-${{ matrix.platform }}"
           python scripts/package.py --version "$VERSION" --platform '${{ matrix.platform }}' --binary-dir 'target/${{ matrix.target }}/release' --destination "$DESTINATION"
           python scripts/release-smoke.py --binary-dir "$DESTINATION"
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.platform }}
           path: |
-            target/packages/*.zip
-            target/packages/*.tar.gz
-            target/packages/*.sha256
+            ${{ runner.temp }}/releases/*.zip
+            ${{ runner.temp }}/releases/*.tar.gz
+            ${{ runner.temp }}/releases/*.sha256
           if-no-files-found: error
           retention-days: 14
 
@@ -230,14 +230,14 @@ jobs:
         shell: bash
         run: |
           VERSION="$(python -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["workspace"]["package"]["version"])')"
-          DESTINATION="target/packages/TRANSPLANE-COMPANY-v${VERSION}-${{ matrix.platform }}"
+          DESTINATION="${RUNNER_TEMP}/releases/TRANSPLANE-COMPANY-v${VERSION}-${{ matrix.platform }}"
           python scripts/package.py --version "$VERSION" --platform '${{ matrix.platform }}' --binary-dir 'target/${{ matrix.target }}/release' --destination "$DESTINATION"
           python scripts/release-smoke.py --binary-dir "$DESTINATION" --runner '${{ matrix.runner }}'
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.platform }}
           path: |
-            target/packages/*.tar.gz
-            target/packages/*.sha256
+            ${{ runner.temp }}/releases/*.tar.gz
+            ${{ runner.temp }}/releases/*.sha256
           if-no-files-found: error
           retention-days: 14
