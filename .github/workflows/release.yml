@@ -126,10 +126,20 @@ jobs:
           CARGO_BUILD_TARGET: ${{ matrix.target }}
         run: ./scripts/build-company.ps1 -BuildProfile Release -SkipWeb
       - name: Build Unix programs after artifact cleanup
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && matrix.platform != 'linux-x86_64-musl'
         env:
           MACOSX_DEPLOYMENT_TARGET: '11.0'
         run: bash scripts/build-company.sh --skip-web --target '${{ matrix.target }}'
+      - name: Build x86_64 musl with the matching Alpine toolchain
+        if: matrix.platform == 'linux-x86_64-musl'
+        run: |
+          docker run --rm --platform linux/amd64 \
+            -v "$PWD:/build" -w /build \
+            -e CARGO_INCREMENTAL=0 -e CARGO_TARGET_DIR=/build/target \
+            -e PACKAGE_OWNER="$(id -u):$(id -g)" \
+            -e RUSTFLAGS='--remap-path-prefix=/build=/source --remap-path-prefix=/usr/local/cargo=/cargo --remap-path-prefix=/usr/local/rustup=/rustup -Ctarget-feature=+crt-static' \
+            rust:1.98.1-alpine3.24@sha256:7cc1c22d77d9432f7fe012a70e6d3e555af54c2a6832700ed7d553f1769ae89f \
+            sh -ec 'apk add --no-cache bash build-base python3; bash scripts/build-company.sh --skip-web --target x86_64-unknown-linux-musl; test ! -L /build/target; chown -R "$PACKAGE_OWNER" /build/target'
       - name: Package public user assets
         shell: bash
         run: |
