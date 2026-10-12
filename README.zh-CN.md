@@ -26,7 +26,7 @@
 
 ## 看看怎么玩
 
-<video src="https://github.com/user-attachments/assets/14a29c4c-3fe9-440d-ba0f-5674bdba5eb7" width="100%" controls></video>
+<video src="https://github.com/user-attachments/assets/6c7f0b05-7954-4266-b7df-fab68b3d03db" width="100%" controls></video>
 
 ## 公司下一步，听你的
 
