@@ -144,6 +144,9 @@ def main():
     launcher = ROOT / ('Start-Company.ps1' if extension else 'Start-Company.sh')
     regular_file(launcher)
     assets.append(launcher)
+    if extension and any(b'Start-Company.exe' in source.read_bytes()
+                         for source in assets if source.suffix == '.md'):
+        raise RuntimeError('Windows startup instructions must name company-launch.exe.')
     destination.mkdir(parents=True)
     for binary in binaries:
         shutil.copy2(binary, destination / binary.name)
