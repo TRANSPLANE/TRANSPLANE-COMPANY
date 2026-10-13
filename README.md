@@ -5,9 +5,9 @@
   <img src="docs/media/hero.svg" width="960" alt="TRANSPLANE-COMPANY — a company management game with your own AI strategist" />
 </picture>
 
-**Run a one-person company like a game. Bring your own AI strategist.**
+**Run a one-person company like a game. Start with a four-week studio, or bring your own AI strategist.**
 
-A narrative management game for solo founders (OPCs) that also works with real business records.
+A company management game for solo founders (OPCs), with a fixed-rule studio, Agent-led stories and real business records.
 
 English · [简体中文](README.zh-CN.md)
 
@@ -32,13 +32,18 @@ English · [简体中文](README.zh-CN.md)
 
 A customer wants a custom feature. Cash is getting tight. A potential partner comes back with an offer. What do you do?
 
-Discuss it with your Agent, make a choice, and see the consequences. Your Agent acts as narrator and strategist: it reads company knowledge, researches relevant market information, explores scenarios, and keeps the company archive up to date. The pixel game interface brings the story, resources, relationships and progress into view.
+Start with a four-week studio: CNY 6,000, twenty hours a week, commissions with deadlines and your own product to build. Allocate work, preview the consequence and confirm. The system calculates cash and progress from fixed rules; no model is needed for this chapter.
+
+For open-ended operations, your own Agent combines actual company records, material you provide and the latest public information it can retrieve to forecast the next move. It preserves sources, observation dates and assumptions, then compares forecasts with actual outcomes. Independent local reasoning remains available. The pixel interface brings resources, relationships and progress into view.
+
+A future optional WORLD connection can add independent perspectives and interaction signals to forecasts. Compare them with local forecasts under the same conditions and against actual outcomes to assess their value. Simulated Agent reactions remain scenario assumptions. The WORLD adapter is not implemented yet; the current connection guides help your Agent read and maintain this independent company service, without a WORLD account.
 
 **A game to explore. A workspace to operate.**
 
 | Start with… | What happens |
 |---|---|
-| **A simulation company** | Build a fictional business from scratch. Face customers, commitments and tradeoffs; follow how earlier choices shape later events. |
+| **The four-week studio** | Confirm the fixed opening resources, balance commissions against product work, and finish at a saved ending after four weeks. |
+| **An Agent-led simulation** | Build a fictional business from scratch. Face customers, commitments and tradeoffs; follow how earlier choices shape later events. |
 | **Your real business** | Work with actual cash records, customers, subscriptions, goals and reports. Ask your Agent for analysis and the next business decision. |
 | **A branch of your real company** | Explore a different strategy in a separate simulation. Its outcomes stay outside your real ledger. |
 
@@ -46,12 +51,12 @@ Simulation assumptions and real-world evidence are saved with the analysis. Miss
 
 ## How to play
 
-1. **Create a company.** Pick simulation or real operations, describe your business, and confirm your starting resources and goal with your Agent.
-2. **Enter the story.** Your Agent prepares the current situation and meaningful business choices.
-3. **Make your move.** Reply in plain language, propose your own plan, or choose in the game interface.
-4. **Read the outcome.** Your Agent saves the results and carries commitments, relationships and delayed consequences into the next event.
+1. **Create a company.** Choose simulation or real operations. An empty CNY simulation can start the four-week studio.
+2. **Confirm your opening.** For the studio, confirm CNY 6,000, 20 weekly hours, CNY 800 weekly overhead and four weeks. For Agent-led play, confirm your business, resources and near-term goal.
+3. **Make your move.** Preview and settle a weekly work allocation, or reply to your Agent's event with an option or your own plan.
+4. **Read the outcome.** Studio results follow fixed capacity, payment and deadline rules. Agent-led play saves outcomes and revisits commitments and relationships. After four weeks, pause, replay in another company or choose a next direction with your Agent.
 
-You can play entirely in your existing Agent conversation. Ask for status, a report or a menu to receive the relevant game link; an optional screenshot renderer can return the actual interface. A choice saved in the browser waits for your Agent to process it.
+See the [studio rules and complete example](docs/studio.md). Agent-led play also works entirely in your existing conversation; ask for status, reports or menus to get game links. An optional screenshot renderer returns the actual interface. Narrative choices saved in the browser wait for your Agent; an external host adapter can receive them continuously.
 
 | On your desk | What you can use it for |
 |---|---|
@@ -93,10 +98,13 @@ on this computer. Detect its OS and CPU, choose a matching official release,
 and verify SHA256SUMS.txt. Use a fixed persistent data directory and preserve
 existing company records and credentials. Start company-launch, confirm the
 service is reachable, and give me the game link and a safe sign-in method.
-Read /api/v1/agent-entry and the relevant operation contracts. Then help me
-choose simulation or real operations, confirm my business, resources and goal,
-create or resume the company, and present the opening business event using
-the deployment's player-output guidance. Wait for my choice.
+Read /api/v1/agent-entry and the relevant operation contracts. Help me choose
+the four-week studio, Agent-led simulation or real operations. If I want the
+studio, create or use an empty CNY simulation, ask me to confirm CNY 6,000,
+20 weekly hours, CNY 800 overhead and four weeks, then read the studio
+contracts and show the first work allocation choices. The studio needs no
+additional model. Otherwise confirm my business, resources and goal and
+present the opening event using player-output guidance. Wait for my choice.
 ```
 
 For hosting on an authorized server:
@@ -109,8 +117,11 @@ binary matches. Use persistent storage, a service supervisor, an HTTPS reverse
 proxy, and local-only backend access. Keep credentials outside URLs, company
 documents and logs; create scoped Agent access. Verify startup, restart and
 backup/restore, then give me the game URL, a safe sign-in method, and how to
-stop, update and restore it. Read /api/v1/agent-entry and continue into company
-setup and the first event using the deployment's player-output guidance.
+stop, update and restore it. Read /api/v1/agent-entry. Offer the four-week
+studio or Agent-led operations. If I want the studio, confirm CNY 6,000,
+20 weekly hours, CNY 800 overhead and four weeks in an empty CNY simulation,
+read the studio contracts and show its first choices. Otherwise continue
+into company setup and the first event using player-output guidance.
 ```
 
 [Platform requirements, source builds & hosting →](docs/getting-started.md)
@@ -156,9 +167,9 @@ For a local Agent:
 .\target\release\company.exe --data-dir .\company-data --lang en play --company <company-id>
 ```
 
-No local Skill installation is needed. The optional [entry Skill](skills/transplane-company/SKILL.md) can retain the connection instructions in your client. Company-scoped credentials authorize remote reads and writes.
+No local Skill installation is needed. The optional [entry Skill](skills/transplane-company/SKILL.md) can retain connection instructions in your client. Company-scoped credentials authorize remote reads and writes. For studio advice, discover the `studio` service; fixed rules settle choices. For continuous narrative handoff, configure the [external host adapter](docs/agent-interface.en.md#keep-an-external-host-connected). It supports a common handler protocol without assuming an open desktop chat automatically receives tasks.
 
-The platform stores, validates and presents company state. Your own Agent supplies reasoning, model calls, scheduling and authorized external actions. Independent deployments need no TransPlane World account.
+The platform stores, validates and presents company state. Your own Agent supplies reasoning, model calls, scheduling and authorized external actions.
 
 ## Built to keep your company portable
 
@@ -173,6 +184,7 @@ The platform stores, validates and presents company state. Your own Agent suppli
 | Guide | English | 简体中文 |
 |---|---|---|
 | Setup & first game | [Getting started](docs/getting-started.md) | [使用指南](docs/getting-started.zh-CN.md) |
+| Four-week studio rules | [Studio](docs/studio.md) | [四周工作室](docs/studio.zh-CN.md) |
 | Agent integration | [Agent interface](docs/agent-interface.en.md) | [Agent 接口](docs/agent-interface.md) |
 | Hosted business Skills | [Skills](docs/hosted-skills.en.md) | [经营 Skills](docs/hosted-skills.md) |
 | Plugin development | [Plugins](docs/plugins.en.md) | [插件接口](docs/plugins.md) |

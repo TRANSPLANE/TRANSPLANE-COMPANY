@@ -13,6 +13,9 @@
 .journey-mode-field, .journey-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .journey-mode-field { display: grid; gap: 16px; }
 .journey-mode-option { display: flex; flex-direction: row; gap: 16px; align-items: center; border: 2px solid var(--game-edge); padding: 20px 16px; background: var(--surface-raised); cursor: pointer; box-shadow: var(--shadow-raised); }
+.journey-mode-option { text-align: start; width: 100%; }
+.journey-mode-option:hover { background: var(--green-50); border-color: var(--game-frame); }
+.journey-mode-option > svg:last-child { margin-inline-start: auto; }
 .journey-mode-option.is-selected { border-color: var(--accent); background: var(--green-50); }
 .journey-mode-option > svg { color: var(--accent); flex-shrink: 0; }
 .journey-mode-option > span { display: grid; gap: 8px; min-width: 0; }
@@ -37,6 +40,11 @@
 .journey-theme-option > span { display: grid; gap: 4px; min-width: 0; }
 .journey-theme-option strong { font-weight: 600; }
 .journey-theme-option > span > span { font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.7; }
+.journey-theme-preview { margin-top: 16px; padding: 16px 20px; background: var(--surface-pane); border: 2px solid var(--game-edge); }
+.journey-theme-preview > h3 { font-family: var(--font-game); font-size: 1.25rem; font-weight: 400; line-height: 1.5; margin-bottom: 16px; overflow-wrap: anywhere; }
+.journey-theme-preview dl { margin: 0; display: grid; gap: 16px; }
+.journey-theme-preview dt { font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 4px; }
+.journey-theme-preview dd { margin: 0; font-size: var(--text-sm); line-height: 1.9; overflow-wrap: anywhere; }
 .journey-settings { border-block: 2px solid var(--border-subtle); padding-bottom: 8px; min-width: 0; }
 .journey-settings > summary { min-height: 44px; padding: 12px 0; cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
 .journey-settings > summary > span { display: block; margin-top: 8px; font-size: var(--text-sm); color: var(--text-secondary); font-weight: 400; line-height: 1.7; }
@@ -83,6 +91,7 @@
   .journey-steps li { font-size: 1rem; }
   .journey-mode-option { gap: 12px; padding: 16px 12px; align-items: flex-start; }
   .journey-mode-option > svg { display: none; }
+  .journey-theme-preview { padding: 16px 12px; }
   .welcome-journey { margin: 24px 12px; padding: 20px 16px; }
   .welcome-mode-button { gap: 12px; padding: 16px 12px; align-items: flex-start; }
   .welcome-mode-button > svg:last-child { display: none; }

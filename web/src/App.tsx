@@ -42,6 +42,8 @@ import { CompanyNetwork } from "./CompanyNetwork";
 import { CommandCenter } from "./CommandCenter";
 import { GameNotifications } from "./GameProgress";
 import { useGameState } from "./useGameState";
+import { StudioGame, useStudioSession, canWriteStudio } from "./StudioGame";
+import { studioCopy } from "./studioCopy";
 import type { Company, RecordEntry, Session } from "./types";
 
 const icons = {
@@ -56,9 +58,11 @@ const icons = {
   files: FolderOpen,
   plugins: Package,
 };
-function tabFromHash(): Tab {
+type AppTab = Tab | "studio" | "narrative";
+function tabFromHash(): AppTab {
   const tab = location.hash.slice(1);
   if (tab === "play") return "overview";
+  if (tab === "studio" || tab === "narrative") return tab;
   return tab in copy.nav ? (tab as Tab) : "overview";
 }
 function messageFor(error: unknown) {
@@ -79,7 +83,7 @@ export default function App() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [companyId, setCompanyId] = useState("");
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<Tab>(tabFromHash);
+  const [tab, setTab] = useState<AppTab>(tabFromHash);
   const [selected, setSelected] = useState<RecordEntry | null>(null);
   const [management, setManagement] = useState(false);
   const [journeyMode, setJourneyMode] = useState<"real" | "simulation" | "choose" | null>(null);
@@ -89,6 +93,9 @@ export default function App() {
   const [networkReady, setNetworkReady] = useState<{ key: string; ready: boolean } | null>(null);
   const { snapshot, loading, error: snapshotError, reload: reloadSnapshot } = useCompanySnapshot(companyId, session, locale);
   const game = useGameState(snapshot?.company.id || "", snapshot?.company.revision || 0);
+  const studio = useStudioSession(snapshot?.company || null);
+  const hasStudio = Boolean(studio.state?.run || studio.state?.can_start);
+  const showingStudio = tab === "studio" || tab === "overview" && hasStudio;
   const networkReadyKey = `${companyId}:${snapshot?.company.revision}:${locale}:${refreshVersion}`;
   const networkReadiness = useCallback((ready: boolean) => setNetworkReady({ key: networkReadyKey, ready }), [networkReadyKey]);
   const mainRef = useRef<HTMLElement>(null);
@@ -102,6 +109,7 @@ export default function App() {
   }, [locale]);
   const owner = session?.role === "owner" || session?.kind === "owner";
   const writable = owner || Boolean(session?.scopes.includes("company.write"));
+  const studioWritable = canWriteStudio(session);
   const gameReady = Boolean(game.state && !game.loading && !game.error && game.state.company_id === snapshot?.company.id && game.state.company_revision === snapshot?.company.revision);
 
   function logout() {
@@ -220,7 +228,7 @@ export default function App() {
   function refresh() {
     setRefreshVersion((value) => value + 1);
     if (!companyId) void loadCompanies();
-    else { void reloadSnapshot().catch(() => { /* The snapshot hook exposes the error. */ }); void game.reload(); }
+    else { void reloadSnapshot().catch(() => { /* The snapshot hook exposes the error. */ }); void game.reload(); void studio.reload(); }
   }
   async function afterFork(id: string) {
     await loadCompanies();
@@ -255,7 +263,7 @@ export default function App() {
     );
   if (!session) return <Login initialError={authError} onLogin={setSession} />;
   return (
-    <div className={`app-shell narrative-shell ${tab === "overview" ? "playing" : "reading-records"}`}>
+    <div className={`app-shell narrative-shell ${["overview", "studio", "narrative"].includes(tab) ? "playing" : "reading-records"}`}>
       <a
         className="skip-link"
         href="#main-content"
@@ -356,7 +364,7 @@ export default function App() {
           <div className="breadcrumb">
             <span>{snapshot?.company.name || "TransPlane Company"}</span>
             <span aria-hidden="true">/</span>
-            <strong>{copy.nav[tab]}</strong>
+            <strong>{tab === "studio" ? studioCopy.title : tab === "narrative" ? studioCopy.narrative : copy.nav[tab]}</strong>
           </div>
           <div className="topbar-actions">
             {snapshot && <GameNotifications state={game.state} onOpen={() => { location.hash = "command"; }} />}
@@ -381,8 +389,8 @@ export default function App() {
           data-company-id={snapshot?.company.id}
           data-company-revision={snapshot?.company.revision}
           data-company-view={tab}
-          data-view-ready={Boolean(snapshot && !loading && !companyLoading && !error && !snapshotError && gameReady && (tab !== "network" || networkReady?.key === networkReadyKey && networkReady.ready))}>
-          {tab !== "overview" && snapshot?.company.mode === "simulation" && (
+          data-view-ready={Boolean(snapshot && !loading && !companyLoading && !error && !snapshotError && gameReady && (!showingStudio || studio.state && !studio.loading && !studio.error) && (tab !== "network" || networkReady?.key === networkReadyKey && networkReady.ready))}>
+          {!["overview", "studio", "narrative"].includes(tab) && snapshot?.company.mode === "simulation" && (
             <div className="simulation-banner">
               <GitBranch size={17} aria-hidden="true" />
               <strong>{words.app011}</strong>
@@ -401,9 +409,12 @@ export default function App() {
             <WelcomeJourney owner={owner} onStart={startJourney} onHelp={() => setPlaybook(true)} />
           ) : snapshot ? (
             <>
-              {tab === "overview" && (
+              {showingStudio && <StudioGame key={companyId} snapshot={snapshot} writable={studioWritable} session={studio} onChanged={reloadSnapshot} onNarrative={() => { location.hash = "narrative"; }} />}
+              {tab === "overview" && !hasStudio && studio.loading && snapshot.company.mode === "simulation" && snapshot.company.currency === "CNY" && <Loading />}
+              {(tab === "narrative" || tab === "overview" && !hasStudio && !(studio.loading && snapshot.company.mode === "simulation" && snapshot.company.currency === "CNY")) && <>
+                {hasStudio && <div className="studio-return"><button className="text-button" onClick={() => { location.hash = "studio"; }}>{studioCopy.title}<ArrowRight size={16} aria-hidden="true" /></button></div>}
                 <Play key={companyId} snapshot={snapshot} owner={writable} select={setSelected} onChanged={reloadSnapshot} onGuide={() => setPlaybook(true)} onAuthorize={owner ? authorizeAgent : undefined} gameState={game.state} onCommand={() => { location.hash = "command"; }} />
-              )}
+              </>}
               {tab === "chronicle" && (
                 <Chronicle snapshot={snapshot} select={setSelected} />
               )}
@@ -463,7 +474,7 @@ export default function App() {
           onClose={() => setManagement(false)}
         />
       )}
-      {journeyMode && owner && <StartJourney initialMode={journeyMode === "choose" ? undefined : journeyMode} owner={owner} onCreated={afterCreated} onClose={() => setJourneyMode(null)} onAuthorize={authorizeAgent} returnFocus={newCompanyRef.current} />}
+      {journeyMode && owner && <StartJourney initialMode={journeyMode === "choose" ? undefined : journeyMode} owner={owner} onCreated={afterCreated} onClose={() => setJourneyMode(null)} onAuthorize={authorizeAgent} onStudio={() => { setJourneyMode(null); location.hash = "studio"; }} returnFocus={newCompanyRef.current} />}
       {playbook && <Playbook company={snapshot?.company} owner={owner} onClose={() => setPlaybook(false)} onStart={startJourney} onAuthorize={owner && companyId ? authorizeAgent : undefined} onSimulation={snapshot?.company.mode === "real" ? () => { setPlaybook(false); location.hash = "simulation"; } : undefined} returnFocus={playbookRef.current} />}
     </div>
   );

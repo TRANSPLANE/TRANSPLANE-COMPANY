@@ -2,7 +2,7 @@
 
 [简体中文](getting-started.zh-CN.md) · [Project home](../README.md) · [Latest release](https://github.com/zhefox/TRANSPLANE-COMPANY/releases/latest)
 
-Start a company, discuss its next move with your own AI Agent, and see the outcome in the game. Choose a fictional simulation, your real business, or a separate simulation branch of a real company.
+Start with a four-week studio whose fixed rules need no model, or discuss open-ended operations with your own AI Agent. You can also maintain your real business or create a separate simulation branch.
 
 ## Install a release
 
@@ -94,7 +94,7 @@ Choose a writable, fixed data directory that survives upgrades. Reuse an existin
 
 Keep owner and Agent tokens in secure local credential storage. Do not put them in URLs, company documents, screenshots or the repository. Give me the game URL and a safe way to sign in.
 
-Read the running service's /api/v1/agent-entry and relevant discovery contracts and guides. Continue into company setup: let me choose simulation or real operations, confirm my resources and goal, then prepare the first event using the service's player-output rules. Do not duplicate an existing company. Keep missing real data unknown.
+Read the running service's /api/v1/agent-entry and relevant discovery contracts and guides. Let me choose the four-week studio, Agent-led simulation or real operations. If I want the studio, create or use an empty CNY simulation, explicitly confirm CNY 6,000 starting cash, 20 weekly hours, CNY 800 weekly overhead and four weeks, then read the studio contracts and show the first weekly choices. No additional model is needed for the studio. Otherwise confirm my resources and goal, then prepare the first event using player-output rules. Do not duplicate a company. Keep missing real data unknown.
 ```
 
 ### On my server
@@ -108,24 +108,31 @@ Initialize only if needed. Run company-server under the host's service manager, 
 
 Store secrets in secure host or Agent credential storage; keep them out of URLs, company files, screenshots and Git. Give me the HTTPS game URL, a safe sign-in method, and start/stop and backup instructions. Grant each remote Agent only the company and capabilities it needs.
 
-Check the health endpoint and owner sign-in, then read /api/v1/agent-entry and task-specific contracts and guides. Continue into setup or the existing game, following player-output narration. Confirm the mode, initial resources and goal with me before saving an opening event. Real business figures need actual sources; simulation assumptions remain explicit.
+Check the health endpoint and owner sign-in, then read /api/v1/agent-entry and task-specific contracts and guides. Offer the four-week studio or Agent-led operations. If I choose the studio, explicitly confirm CNY 6,000, 20 weekly hours, CNY 800 weekly overhead and four weeks in an empty CNY simulation; read the studio contracts and show its first choices. Otherwise continue into setup or the existing game, following player-output narration and confirming the mode, resources and goal. Real business figures need actual sources; simulation assumptions remain explicit.
 ```
 
 ## Start playing
 
-After signing in, create a company, choose its mode and confirm currency, timezone and starting date. Send its opening brief to your Agent and describe your resources, time and near-term goal.
+After signing in, create a company and confirm its mode, currency, timezone and starting date. For the four-week studio, use an empty CNY simulation and confirm CNY 6,000, 20 weekly hours, CNY 800 overhead and four weeks on its start screen. For Agent-led operations, send the opening brief to your Agent and describe resources, time and a near-term goal.
 
 | Mode | Starting point |
 |---|---|
-| Simulation | Confirm fictional resources and a setting with your Agent; no real business is required |
+| Four-week studio | Allocate hours between fixed commissions and a 24-hour product; preview and settle through system rules without a model |
+| Agent-led simulation | Confirm fictional resources and a setting with your Agent; no real business is required |
 | Real operations | Provide actual business records; missing funds and customer data remain unknown |
 | Simulate a real company | Create a separate branch to explore choices without changing the real ledger |
 
-Say “I choose…”, propose your plan, ask for status, or select an option in the page. A browser choice saves intent and waits for your Agent; it does not spend money or execute outside actions. You can change it until the Agent claims it. If manual handoff is needed, copy the saved intent into the Agent conversation.
+In the studio, preview a weekly allocation, then confirm settlement. Payments require finished work and follow fixed deadlines; unused time expires and overhead is charged even during idle weeks. After week four, review all three goal conditions and pause, replay in a new company or choose Agent-led operations. See [rules and a four-week example](studio.md).
+
+In Agent-led play, say “I choose…”, propose your plan, ask for status, or select an option in the page. A browser choice saves intent and waits for your Agent; it does not spend money or execute outside actions. You can change it until claimed. If manual handoff is needed, copy saved intent into the Agent conversation, or configure the persistent external adapter below.
 
 After results are saved, say “continue” to face the next situation. If the event still needs a choice, “continue” presents that choice. The game retains commitments, relationships and later consequences.
 
 The relationship view connects customers, partners, suppliers and resources. The task desk shows goals, tasks, opportunities and risks. Experience comes from recorded outcomes and reviews; missing cost evidence leaves attributed profit unknown.
+
+For business forecasts, give your Agent actual company records and relevant material. It can supplement them with the latest public sources it is authorized and able to retrieve, retaining source URLs, observation dates and assumptions. When required evidence is missing, provide the data or minimum source access; actual unknowns remain unknown. Independent local reasoning remains available without WORLD.
+
+A future optional WORLD connection can supply independent perspectives and Agent interaction signals. The adapter is not implemented yet; today's connection guides connect your Agent to the independent company service. Simulated Agent responses remain scenario assumptions rather than actual customer feedback. To evaluate additional signals, retain source labels and compare local and supplemented forecasts using the same company snapshot, forecast window and metric definitions against the same actual cutoff; improvements require that evidence.
 
 ## Connect your Agent
 
@@ -148,6 +155,18 @@ Local CLI examples, using the same data directory as the server:
 ```
 
 Agents read hosted business Skills as needed and follow the service's narration rules. Manage Skills in Plugins, preview documents in Files, and ask for status, reports or module links. Actual screenshots require the [optional renderer](operations.md#可选前端截图).
+
+### Optional: keep your host connected
+
+Codex, OpenClaw and remote Agents can receive choices saved in the browser. This needs a continuously running external adapter and your configured host handler; a desktop chat without a persistent receiving hook does not automatically receive tasks. Grant credentials for the company's reads and writes, supply `COMPANY_AGENT_TOKEN` through the host's secure environment, then run:
+
+```bash
+python scripts/agent-host.py --service-url http://127.0.0.1:4177 --company <company-id> --label "My Agent" --handler-argv '["python","my-company-handler.py"]'
+```
+
+Replace the argument array with your actual host handler; remote connections use an authorized HTTPS service address. The adapter delivers tasks on standard input and credentials only through the environment. The handler claims intent, saves results and prepares the next scene through deployment contracts. Once connected, choices no longer need manual copying each turn; known scene materials remain readable during slow work. The page distinguishes waiting for receipt, received and claimed processing; receipt does not mean a business outcome is complete.
+
+The adapter renews its lease and retains local deduplication receipts without task text or credentials. Timeout, failure or missing saved progress stops it without automatic replay; review claimed and saved state before recovery. Ctrl+C disconnects while preserving claims. See [keep an external host connected](agent-interface.en.md#keep-an-external-host-connected) for task contracts, handler input, `--once` and recovery boundaries.
 
 [Agent interface](agent-interface.en.md) · [Hosted Skills](hosted-skills.en.md) · [Plugins](plugins.en.md)
 

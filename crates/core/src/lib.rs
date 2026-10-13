@@ -2,11 +2,16 @@ use chrono::{Datelike, Months, NaiveDate};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
+pub mod agent_link;
+pub mod forecast_context;
 pub mod game_systems;
+pub mod gameplay;
 pub mod integration;
 pub mod locale;
 pub mod network;
 pub mod skills;
+pub mod studio;
+pub mod studio_contract;
 pub use locale::{Locale, localize_error};
 pub fn discovery_localized(
     view: Option<&str>,
@@ -384,6 +389,7 @@ pub fn validate_record(
                     }
                 }
             }
+            forecast_context::validate(v)?;
         }
         "report" => {
             text(v, "title")?;
@@ -398,6 +404,7 @@ pub fn validate_record(
                 return fail("invalid_input", "报告基准版本不存在");
             }
             text(v, "body")?;
+            gameplay::validate_aftermath(v, company, existing)?;
         }
         "file" => {
             relative_path(text(v, "relative_path")?)?;
@@ -405,6 +412,21 @@ pub fn validate_record(
             integer(v, "size_bytes")?;
         }
         "skill" => skills::validate_skill(v)?,
+        "studio_run" => {
+            if company.mode != "simulation" || company.currency != "CNY" {
+                return fail(
+                    "simulation_required",
+                    "The studio chapter requires a CNY simulation company.",
+                );
+            }
+            if text(v, "ruleset")? != studio::RULESET || text(v, "source")? != "builtin:studio-v1" {
+                return fail("invalid_input", "Unknown studio ruleset.");
+            }
+            date(text(v, "started_on")?)?;
+            let state: studio::State = serde_json::from_value(v["state"].clone())
+                .map_err(|_| DomainError::new("invalid_input", "Invalid studio state."))?;
+            studio::validate_state(&state)?;
+        }
         "simulation_turn" => {
             if company.mode != "simulation" {
                 return fail("simulation_required", "推演回合只能写入模拟公司");
@@ -432,6 +454,7 @@ pub fn validate_record(
                     return fail("reference_not_found", "推演目标引用不存在");
                 }
             }
+            gameplay::validate_aftermath(v, company, existing)?;
         }
         "decision" => {
             text(v, "title")?;
@@ -511,6 +534,7 @@ pub fn validate_record(
             }
             let mut option_ids = BTreeSet::new();
             for option in options {
+                gameplay::validate_option(option)?;
                 let id = text(option, "id")?;
                 identifier(id)?;
                 if !option_ids.insert(id) {
@@ -543,6 +567,7 @@ pub fn validate_record(
                     }
                 }
             }
+            gameplay::validate_experience(v, company, existing)?;
             let status = text(v, "status")?;
             if status == "selected" || status == "processing" || status == "resolved" {
                 let selection = v
@@ -849,7 +874,10 @@ pub fn compute_metrics(company: &Company, records: &[Record], as_of: NaiveDate) 
 }
 
 pub fn operation_scope(op: &str) -> Option<&'static str> {
-    if let Some(scope) = network::operation_scope(op).or_else(|| game_systems::operation_scope(op))
+    if let Some(scope) = network::operation_scope(op)
+        .or_else(|| game_systems::operation_scope(op))
+        .or_else(|| agent_link::operation_scope(op))
+        .or_else(|| studio_contract::operation_scope(op))
     {
         return Some(scope);
     }
@@ -910,8 +938,10 @@ pub fn decision_change_affects_context(
 }
 
 fn operation_contract(op: &str) -> Value {
-    if let Some(contract) =
-        network::operation_contract(op).or_else(|| game_systems::operation_contract(op))
+    if let Some(contract) = network::operation_contract(op)
+        .or_else(|| game_systems::operation_contract(op))
+        .or_else(|| agent_link::operation_contract(op))
+        .or_else(|| studio_contract::operation_contract(op))
     {
         return contract;
     }
@@ -1024,6 +1054,11 @@ fn operation_contract(op: &str) -> Value {
         }
         if op == "company.play" {
             contract["result"] = json!({"company_id":"string","data_revision":"integer","phase":["awaiting_choice","awaiting_agent","agent_processing","awaiting_event"],"current_event":"decision record with selection and claim request templates, or null","latest_result":"fixed result record versions and before/after metrics, or null","state":"current deterministic metrics and goal progress","links":"company-scoped menu links"});
+            contract["result"]["story_context"] = json!({"recent_choices":"at most five newest settled choices with exact source_ref","cast":"saved identities, roles and concerns with source_ref","relationships":"settled relationship changes with exact source_ref","open_commitments":"pending saved commitments with stable origin and exact source_ref","chapter":"current saved chapter and settled closure, or null"});
+            contract["result"]["presentation"] = json!(
+                "current experience, options and exact source_ref; null for a legacy event without experience"
+            );
+            contract["result"]["cadence"] = json!({"chapter":"saved chapter or null","next_beat":["choose","await_agent","await_result","chapter_review","prepare_event"]});
         }
         if op == "company.presentation" {
             contract["result"] = json!({"view":"string","href":"credential-free relative company link","capture":"configured boolean, reason and supported views","play":"company.play result"});
@@ -1253,6 +1288,24 @@ fn operation_contract(op: &str) -> Value {
         _ => ("company", "", vec![], json!({})),
     };
     let ids = json!({"type":"array","items":{"type":"string"}});
+    if op == "decision.put" {
+        properties["experience"] = gameplay::experience_schema();
+        let option_properties = &mut properties["options"]["items"]["properties"];
+        for field in ["benefit", "tradeoff", "commitment"] {
+            option_properties[field] = json!({"type":"string","maxLength":1000});
+        }
+        option_properties["feedback_on"] = json!({"type":"string","format":"date"});
+    }
+    if op == "forecast.put" {
+        properties["context_sources"] = forecast_context::sources_schema();
+        properties["analysis_method"] = json!({"type":"string","minLength":1,"maxLength":2000});
+        properties["limitations"] =
+            json!({"type":"array","maxItems":8,"items":{"type":"string","maxLength":1000}});
+    }
+    if ["report.put", "simulation_turn.put"].contains(&op) {
+        properties["aftermath"] = gameplay::aftermath_schema();
+        properties["decision_id"] = json!({"type":"string"});
+    }
     let source = json!({"type":"object","required":["kind","reference"],"properties":{"kind":{"type":"string"},"reference":{"type":"string"}}});
     match op {
         "company.create" => {
@@ -1330,6 +1383,25 @@ fn operation_contract(op: &str) -> Value {
         rules.push("copy_from 仅用于新建，只接受准确内置或插件模板引用；读取权限同时需要 company.read；服务核对摘要并保存只读来源快照，改写正文不改变来源");
     }
     let mut contract = json!({"id":op,"operation":op,"service":service,"description":description,"kind":"write","scope":operation_scope(op),"http":{"method":"POST","path":if op=="company.create"{"/api/v1/companies".to_string()}else{format!("/api/v1/companies/{{company_id}}/operations/{op}")}},"input_schema":{"type":"object","required":["request_id","input"],"properties":{"request_id":{"type":"string"},"expected_revision":{"type":["integer","null"]},"input":{"type":"object","required":required,"properties":properties}}},"result":{"status":"committed","replayed":"boolean","record":"optional","company":"optional","company_revision":"integer"},"errors":["invalid_input","forbidden","reference_not_found","revision_conflict","request_id_conflict","active_decision_exists","invalid_result_reference"],"rules":rules,"guide":format!("/api/v1/agent-guide?topic={service}")});
+    if op == "forecast.put" {
+        contract["context_guide"] = json!("/api/v1/agent-guide?topic=prediction");
+        contract["rules"].as_array_mut().unwrap().extend([
+            json!("Current external facts need dated references. Source observation and retrieval must be at or before as_of; retain expired sources as dated context."),
+            json!("Local reasoning works without WORLD. Optional WORLD interactions add perspectives and response signals; they do not certify real customer outcomes or improved predictive accuracy.")
+        ]);
+    }
+    if op == "decision.put" {
+        contract["input_schema"]["properties"]["input"]["allOf"] = json!([{
+            "if":{"required":["experience"]},
+            "then":{"properties":{"options":{"minItems":2,"maxItems":4,"items":{"required":["benefit","tradeoff"]}}}}
+        }]);
+        contract["rules"].as_array_mut().unwrap().push(json!("使用 experience 时提供二至四个方案，每项说明 benefit 与 tradeoff；不用兼得一切的最优答案代替经营取舍"));
+    }
+    if ["report.put", "simulation_turn.put"].contains(&op) {
+        contract["input_schema"]["properties"]["input"]["allOf"] = json!([{
+            "if":{"required":["aftermath"]},"then":{"required":["decision_id"]}
+        }]);
+    }
     if op == "simulation_turn.put" {
         contract["input_schema"]["properties"]["input"]["anyOf"] =
             json!([{"required":["before_revision"]},{"required":["decision_id"]}]);
@@ -1397,6 +1469,8 @@ pub fn operation_ids() -> Vec<&'static str> {
     ];
     operations.extend(network::operation_ids());
     operations.extend(game_systems::operation_ids());
+    operations.extend(agent_link::operation_ids());
+    operations.extend(studio_contract::operation_ids());
     operations
 }
 pub fn discovery(
@@ -1411,7 +1485,7 @@ pub fn discovery(
         .collect();
     match view {
         "services" => Ok(
-            json!({"version":1,"view":"services","items":[{"id":"company","name":"公司档案"},{"id":"decision","name":"经营事件"},{"id":"finance","name":"资金与订阅"},{"id":"business","name":"业务与资源"},{"id":"growth","name":"经营目标与路线"},{"id":"reports","name":"报告与预测"},{"id":"files","name":"公司资料"},{"id":"simulation","name":"经营推演"},{"id":"skills","name":"经营 Skills","description":"按需读取经营方法与公司经验规范","catalog":"/api/v1/skills","company_catalog":"/api/v1/companies/{company_id}/skills"},{"id":"plugins","name":"插件能力"},{"id":"network","name":"关系网","query":"/api/v1/companies/{company_id}/network"},{"id":"game","name":"任务与信笺","query":"/api/v1/companies/{company_id}/game-state"}],"next":"/api/v1/discovery?view=operations&service=<id>"}),
+            json!({"version":1,"view":"services","items":[{"id":"company","name":"公司档案"},{"id":"decision","name":"经营事件"},{"id":"finance","name":"资金与订阅"},{"id":"business","name":"业务与资源"},{"id":"growth","name":"经营目标与路线"},{"id":"reports","name":"报告与预测"},{"id":"files","name":"公司资料"},{"id":"simulation","name":"经营推演"},{"id":"skills","name":"经营 Skills","description":"按需读取经营方法与公司经验规范","catalog":"/api/v1/skills","company_catalog":"/api/v1/companies/{company_id}/skills"},{"id":"plugins","name":"插件能力"},{"id":"agent-link","name":"Agent 连接","description":"连接外部宿主并确认待办交接"},{"id":"studio","name":"Four-week studio","description":"Fixed capacity, deadlines and deterministic outcomes"},{"id":"network","name":"关系网","query":"/api/v1/companies/{company_id}/network"},{"id":"game","name":"任务与信笺","query":"/api/v1/companies/{company_id}/game-state"}],"next":"/api/v1/discovery?view=operations&service=<id>"}),
         ),
         "operations" => Ok(
             json!({"version":1,"view":view,"items":ops.into_iter().filter(|o|service.is_none_or(|s|o["service"]==s)).map(|o|json!({"id":o["id"],"description":o["description"],"scope":o["scope"],"contract":format!("/api/v1/discovery?view=contract&operation={}",o["id"].as_str().unwrap())})).collect::<Vec<_>>()}),
@@ -1434,7 +1508,7 @@ pub const PLAYER_OUTPUT_HINT: &str = "每次面向玩家回复前，必须先应
 
 pub fn player_output_policy() -> Value {
     json!({
-        "version": 2,
+        "version": 3,
         "topic": "player-output",
         "purpose": "以经营叙事向玩家呈现事件、结果和下一选择",
         "required": true,
@@ -1445,6 +1519,16 @@ pub fn player_output_policy() -> Value {
             {"part":"result","instruction":"已经结算时简述行动造成的变化、任务结果及待兑现承诺；未结算时如实呈现等待、处理中或尚缺依据，省略不存在的反馈"},
             {"part":"next-choice","instruction":"结尾给出可直接回复的自然方案文字及必要投入、期限或风险；让玩家作决定，不把继续当作代选授权"}
         ],
+        "gameplay": {
+            "opening":"模拟开局把题材、有限资源与近期目标合成一组建议供玩家确认，确认后当次接首个处境；已有答案不再重复问卷",
+            "event":"用此刻发生的人物行动、旧承诺或机会引出取舍，让玩家读出为什么在意；每个方案都有收益与代价，保留自由计划",
+            "judgement":"选择前保存约束、风险与反馈条件，结果接续玩家实际方案；不事后改规则，不用明显最优答案、任意奖惩或无休止危机维持剧情",
+            "continuity":"从 story_context 读取相关人物、早先选择与未兑现承诺；结算用具体变化和人物回应显示决定的影响，未发生的后果保持待兑现",
+            "closure":"模拟短篇围绕一个近期目标组织三至五回合，按选择调整路径；收束时呈现实际结果、关键取舍和经营所得，目标未达成也允许收束；由玩家决定继续下一阶段或先停下",
+            "real_mode":"真实经营只呈现实际人物、已知约束与保存结果；不虚构台词、关系变化或经营成果，不为篇章节奏改变真实日期与账目",
+            "fixed_rules":"For an event with execution=studio-v1, read the studio contract, preview a structured allocation and submit studio.choose after confirmation. Do not invent payments, time, success or a fifth week; preserve selection_text when translating a saved free plan.",
+            "prediction":"Use actual company records and dated public information available to the owner's Agent for local reasoning. Record observation and retrieval dates, assumptions and missing inputs. WORLD interaction signals are optional additional perspectives, not confirmed real customer outcomes. Offer those signals when the host supports them; do not promise improved accuracy without comparing predictions against later actual results."
+        },
         "steps": [
             "本合同适用于每次开局、事件、结算、继续、状态和意向交接回复；读取完整合同后再组织玩家文字，不能只看链接或照抄旧报告、事件和工具输出",
             "接续角色先读取已登记的人物资料、报告与回访线索，沿用稳定自然称呼、已知身份、动机和承诺；旧存档中的技术代号作为内部查找键，不直接复述给玩家",
@@ -1474,12 +1558,28 @@ pub fn player_output_policy_localized(locale: Locale) -> Value {
 }
 
 pub fn guide(topic: &str) -> Result<Value> {
+    if topic == "prediction" {
+        return Ok(
+            json!({"topic":"prediction","purpose":"Reason and forecast from current evidence while retaining a reproducible cutoff","steps":[
+            "Local reasoning works without WORLD: use company records, owner-provided data and current public information the external Agent can retrieve.",
+            "Ask for missing material or minimum source credentials when it changes the decision. Keep credentials outside company knowledge, reports, links and captures.",
+            "Before submitting forecast.put, record as_of, company baseline, assumptions, scenarios, analysis_method, context_sources and limitations. Each source states its kind, reference, observation date and retrieval date.",
+            "Dates must not introduce knowledge from after the forecast cutoff. Preserve expired sources as dated context; do not label unknown freshness as real-time evidence.",
+            "When supported by the owner's host, optional WORLD social interactions may add independent views and response signals. Keep simulated Agent responses separate from real customer evidence.",
+            "After later actual records become available, compare the fixed original scenarios with those results. Improved accuracy is a testable outcome, not a connection guarantee."
+        ],"discovery":"/api/v1/discovery?view=contract&operation=forecast.put"}),
+        );
+    }
     if topic == "player-output" {
         let mut policy = player_output_policy();
         policy["discovery"] = json!("/api/v1/discovery?view=operations&service=company");
         return Ok(policy);
     }
-    if let Some(guide) = network::guide(topic).or_else(|| game_systems::guide(topic)) {
+    if let Some(guide) = network::guide(topic)
+        .or_else(|| game_systems::guide(topic))
+        .or_else(|| agent_link::guide(topic))
+        .or_else(|| studio_contract::guide(topic))
+    {
         return Ok(guide);
     }
     let (purpose, steps) = match topic {

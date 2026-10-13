@@ -15,10 +15,12 @@ use std::{
     net::SocketAddr,
     path::{Component, PathBuf},
 };
+mod agent_link;
 mod game_systems;
 mod network;
 mod presentation;
 mod skills;
+mod studio;
 
 #[derive(RustEmbed)]
 #[folder = "../../web/dist/"]
@@ -32,10 +34,12 @@ struct ServerState {
 
 pub fn router(app: App, web_dir: Option<PathBuf>) -> Router {
     Router::new()
+        .merge(agent_link::routes())
         .merge(presentation::routes())
         .merge(skills::routes())
         .merge(network::routes())
         .merge(game_systems::routes())
+        .merge(studio::routes())
         .route("/api/v1/health", get(health))
         .route("/api/v1/agent-entry", get(agent_entry))
         .route("/api/v1/discovery", get(discovery))
@@ -399,6 +403,8 @@ async fn agent_entry(Extension(locale): Extension<Locale>) -> Json<Value> {
         "game":{"state":"/api/v1/companies/{company_id}/game-state","guide":format!("/api/v1/agent-guide?topic=game&lang={}",locale_code(locale)),"write_scope":"company.write"},
         "network":{"state":"/api/v1/companies/{company_id}/network","guide":format!("/api/v1/agent-guide?topic=network&lang={}",locale_code(locale)),"write_scopes":["company.write","finance.write"]},
         "auth":{"scheme":"Bearer","management":"owner"},
+        "agent_link":{"status":"/api/v1/companies/{company_id}/agent-link","discovery":"/api/v1/discovery?view=operations&service=agent-link","guide":format!("/api/v1/agent-guide?topic=agent-link&lang={}",locale_code(locale)),"receiver":"external_client","installed_helper":"scripts/agent-host.py"},
+        "prediction":{"guide":format!("/api/v1/agent-guide?topic=prediction&lang={}",locale_code(locale)),"standalone":true,"world_signals":"optional","external_information":"provided_or_retrieved_by_owners_agent"},
         "play":{"state":"/api/v1/companies/{company_id}/play","guide":format!("/api/v1/agent-guide?topic=play&lang={}",locale_code(locale)),"presentation":"/api/v1/companies/{company_id}/presentation?view={view}","capture":"/api/v1/companies/{company_id}/presentation/capture"},
         "maintenance":{"cli":"company","writes":{"request_id":"required","expected_revision":"required when updating an existing record","current_company_snapshot":"defaulted atomically when omitted; explicit historical values are validated"},"changes":"/api/v1/companies/{company_id}/changes?after_revision={revision}&wait_ms=25000","scheduling":"external_agent"}
     }))
@@ -563,6 +569,7 @@ async fn metrics(
 }
 async fn execute(
     State(state): State<ServerState>,
+    Extension(locale): Extension<Locale>,
     headers: HeaderMap,
     Path((id, op)): Path<(String, String)>,
     payload: Result<Json<OperationRequest>, JsonRejection>,
@@ -570,6 +577,9 @@ async fn execute(
     let scope = operation_scope(&op)
         .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "not_found", "操作不存在。"))?;
     let p = authorize(&state, &headers, Some(&id), scope).await?;
+    if ["studio.start", "studio.choose"].contains(&op.as_str()) {
+        studio::authorize_write(&p, &id)?;
+    }
     if op.starts_with("plugin.") {
         for permission in state
             .app
@@ -593,7 +603,19 @@ async fn execute(
         p.authorize(Some(&id), "company.read")
             .map_err(ApiError::from_error)?;
     }
-    result(state.app.execute(Some(&id), &op, request, &p.subject).await)
+    result(
+        state
+            .app
+            .execute(Some(&id), &op, request, &p.subject)
+            .await
+            .map(|value| {
+                if ["studio.start", "studio.choose"].contains(&op.as_str()) {
+                    App::localize_studio_receipt(value, locale)
+                } else {
+                    value
+                }
+            }),
+    )
 }
 async fn execute_global(
     State(state): State<ServerState>,
@@ -640,6 +662,9 @@ async fn import(
             .ok_or_else(|| ApiError::new(StatusCode::NOT_FOUND, "not_found", "操作不存在。"))?;
         p.authorize(Some(&id), scope)
             .map_err(ApiError::from_error)?;
+        if ["studio.start", "studio.choose"].contains(&op.operation.as_str()) {
+            studio::authorize_write(&p, &id)?;
+        }
         if op.operation == "skill.put" && op.request.input.get("copy_from").is_some() {
             p.authorize(Some(&id), "company.read")
                 .map_err(ApiError::from_error)?;

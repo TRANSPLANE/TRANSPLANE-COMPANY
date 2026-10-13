@@ -51,6 +51,7 @@ fn catalog() -> &'static BTreeMap<String, String> {
         for module in [
             include_str!("network.en.json"),
             include_str!("game_systems.en.json"),
+            include_str!("agent_link.en.json"),
         ] {
             let contribution: BTreeMap<String, String> =
                 serde_json::from_str(module).expect("valid module English catalog");

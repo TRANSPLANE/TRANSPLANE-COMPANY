@@ -30,8 +30,10 @@ USER_DOCUMENTS = (
     'agent-interface.en.md', 'agent-interface.md',
     'hosted-skills.en.md', 'hosted-skills.md',
     'plugins.en.md', 'plugins.md', 'operations.md',
+    'studio.md', 'studio.zh-CN.md',
 )
 USER_SCRIPTS = (
+    'agent-host.py',
     'capture-company.mjs', 'load-example.ps1',
     'renderer/capture-company.mjs', 'renderer/package.json', 'renderer/package-lock.json',
 )

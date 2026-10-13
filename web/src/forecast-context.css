@@ -1,0 +1,20 @@
+.forecast-context { margin-block: 20px; border-top: 1px solid var(--game-edge); padding-top: 16px; min-width: 0; }
+.forecast-context-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 12px; }
+.forecast-context-heading h3 { margin: 0; font: 1.25rem/1.5 var(--font-game); }
+.forecast-context-heading > button { max-width: 100%; white-space: normal; min-height: 44px; font-size: var(--text-sm); }
+.forecast-context-sources { list-style: none; margin: 0; padding: 0; }
+.forecast-context-sources > li { padding-block: 12px; border-bottom: 1px solid var(--neutral-200); overflow-wrap: anywhere; }
+.forecast-source-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 16px; }
+.forecast-source-heading > span { color: var(--text-secondary); font-size: var(--text-xs); }
+.forecast-source-times { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 10px 0 0; font-size: var(--text-xs); }
+.forecast-source-times > div { display: flex; align-items: baseline; gap: 8px; }
+.forecast-source-times dt { color: var(--text-secondary); }
+.forecast-source-times dd { margin: 0; font-variant-numeric: tabular-nums; }
+.forecast-source-stale, .forecast-source-timing { font-size: var(--text-xs); color: var(--amber-700); margin-top: 8px; line-height: 1.8; }
+.forecast-source-unknown { font-size: var(--text-sm); color: var(--text-secondary); }
+.forecast-context summary { min-height: 44px; padding-block: 10px; cursor: pointer; font-size: var(--text-sm); }
+.forecast-context details p, .forecast-limitations li { font-size: var(--text-sm); line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
+.forecast-source-reference > span { display: block; margin-top: 10px; color: var(--text-secondary); font-size: var(--text-xs); }
+.forecast-update-task pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; background: var(--neutral-50); border: 1px solid var(--game-edge); font: var(--text-sm)/1.85 var(--font-body); }
+@media (max-width: 520px) { .forecast-context-heading { align-items: flex-start; } .forecast-context-heading > button { width: 100%; } .forecast-source-times { gap: 8px 16px; } }
+@media (forced-colors: active) { .forecast-context, .forecast-context-sources > li, .forecast-update-task pre { border-color: CanvasText; } .forecast-source-stale, .forecast-source-timing { color: CanvasText; } }

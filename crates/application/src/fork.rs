@@ -127,7 +127,14 @@ impl App {
         .await?;
         for row in rows {
             let record: Record = serde_json::from_str(&row.try_get::<String, _>("data")?)?;
-            if ["simulation_turn", "forecast", "report", "decision"].contains(&record.kind.as_str())
+            if [
+                "simulation_turn",
+                "forecast",
+                "report",
+                "decision",
+                "studio_run",
+            ]
+            .contains(&record.kind.as_str())
                 || (record.kind == "file"
                     && (record.data["fork_evidence"] == true
                         || record.data["fork_source_content"] == true))

@@ -13,6 +13,7 @@ import { api, getCredential } from "./api";
 import { Extensions } from "./Extensions";
 import { CompanyScene } from "./CompanyScene";
 import { EvidenceTrace } from "./EvidenceTrace";
+import { ForecastContext } from "./ForecastContext";
 import { FilePreview } from "./FilePreview";
 import { filePreviewCopy } from "./filePreviewCopy";
 import { copy, recordCopy } from "./copy";
@@ -894,6 +895,7 @@ function Forecast({
           </ul>
         </div>
       )}
+      <ForecastContext record={record} />
       <EvidenceTrace record={record} />
       <div className="forecast-scenarios">
         {arr(record.data.scenarios).map((s, i) => {

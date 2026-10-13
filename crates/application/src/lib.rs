@@ -19,6 +19,7 @@ macro_rules! query {
         sqlx::query(sqlx::AssertSqlSafe(($q).to_string()))
     };
 }
+mod agent_link;
 mod fork;
 mod game_systems;
 mod network;
@@ -27,6 +28,7 @@ mod plugins;
 mod portability;
 mod preview;
 mod skills;
+mod studio;
 
 #[derive(Debug, Clone)]
 pub struct AppConfig {
@@ -94,6 +96,7 @@ pub struct App {
     root: Arc<PathBuf>,
     pg: bool,
     write_lock: Arc<Mutex<()>>,
+    agent_links: Arc<Mutex<BTreeMap<String, agent_link::AgentLinkSession>>>,
 }
 fn now() -> String {
     Utc::now().to_rfc3339()
@@ -231,6 +234,7 @@ impl App {
             root: Arc::new(root),
             pg,
             write_lock: Arc::new(Mutex::new(())),
+            agent_links: Arc::new(Mutex::new(BTreeMap::new())),
         };
         app.migrate().await?;
         Ok(app)
@@ -1029,7 +1033,12 @@ impl App {
             identifier(id)?;
             let mut c = self.company_tx(tx, id).await?;
             let previous = c.revision;
-            if operation == "simulation.fork" {
+            if ["studio.start", "studio.choose"].contains(&operation) {
+                result = self
+                    .studio_operation_tx(tx, &c, operation, &request, actor)
+                    .await?;
+                result_company = self.company_tx(tx, id).await?;
+            } else if operation == "simulation.fork" {
                 let mut fork = c.clone();
                 fork.id = new_id();
                 fork.name = text(&request.input, "name")?.into();
@@ -1248,10 +1257,23 @@ impl App {
                                 .ok_or_else(|| {
                                     err("reference_not_found", "回合关联的经营事件不存在")
                                 })?;
-                            if !matches!(
-                                decision.data["status"].as_str(),
-                                Some("selected" | "processing")
-                            ) {
+                            let previous = existing.iter().find(|record| {
+                                record.kind == "simulation_turn"
+                                    && Some(record.id.as_str()) == input["id"].as_str()
+                            });
+                            if previous.is_some_and(|record| {
+                                record.data.get("decision_id") != input.get("decision_id")
+                            }) {
+                                return Err(err("immutable_record", "回合关联的经营事件不能替换"));
+                            }
+                            let settled_revision =
+                                previous.is_some() && decision.data["status"] == "resolved";
+                            if !settled_revision
+                                && !matches!(
+                                    decision.data["status"].as_str(),
+                                    Some("selected" | "processing")
+                                )
+                            {
                                 return Err(err(
                                     "invalid_transition",
                                     "回合只能关联已选择的经营事件",
@@ -1262,7 +1284,11 @@ impl App {
                                 .get("claim")
                                 .and_then(|claim| claim.get("selection_company_revision"))
                                 .and_then(Value::as_i64)
-                                .unwrap_or(decision.company_revision);
+                                .unwrap_or_else(|| {
+                                    previous
+                                        .and_then(|record| record.data["before_revision"].as_i64())
+                                        .unwrap_or(decision.company_revision)
+                                });
                             if input.get("before_revision").is_none() {
                                 input["before_revision"] = json!(selection_revision);
                             }
@@ -1280,6 +1306,40 @@ impl App {
                         text(&input, "id")?.into()
                     };
                     identifier(&record_id)?;
+                    if ["report", "simulation_turn"].contains(&kind)
+                        && let Some(old) = existing
+                            .iter()
+                            .find(|record| record.kind == kind && record.id == record_id)
+                    {
+                        if (old.data.get("aftermath").is_some()
+                            || input.get("aftermath").is_some()
+                            || (kind == "simulation_turn" && old.data.get("decision_id").is_some()))
+                            && old.data.get("decision_id") != input.get("decision_id")
+                        {
+                            return Err(err("immutable_record", "经营后果关联的事件不能替换"));
+                        }
+                        // Removing aftermath in an intermediate revision must
+                        // not remove the original event binding.
+                        let history = query!(&sql(self.pg,
+                            "SELECT data FROM record_versions WHERE company_id=? AND kind=? AND id=? ORDER BY revision"))
+                            .bind(id).bind(kind).bind(&record_id).fetch_all(&mut **tx).await?;
+                        for row in history {
+                            let prior: Record =
+                                serde_json::from_str(&row.try_get::<String, _>("data")?)?;
+                            if prior.data.get("aftermath").is_some()
+                                || (kind == "simulation_turn"
+                                    && prior.data.get("decision_id").is_some())
+                            {
+                                if prior.data.get("decision_id") != input.get("decision_id") {
+                                    return Err(err(
+                                        "immutable_record",
+                                        "经营后果关联的事件不能替换",
+                                    ));
+                                }
+                                break;
+                            }
+                        }
+                    }
                     if kind == "file"
                         && existing.iter().any(|r| {
                             r.kind == "file"
@@ -1614,6 +1674,7 @@ impl App {
                             return Err(err("invalid_input", "结算需要 1 至 100 个结果引用"));
                         }
                         let mut has_required = false;
+                        let mut has_aftermath = false;
                         let mut unique = std::collections::BTreeSet::new();
                         for item in refs {
                             let kind = text(item, "kind")?;
@@ -1645,6 +1706,7 @@ impl App {
                                 .ok_or_else(|| err("invalid_result_reference", "结果版本在本公司不存在"))?;
                             let referenced: Record =
                                 serde_json::from_str(&row.try_get::<String, _>("data")?)?;
+                            has_aftermath |= referenced.data.get("aftermath").is_some();
                             let selected_revision = old_record
                                 .data
                                 .get("claim")
@@ -1668,6 +1730,24 @@ impl App {
                         }
                         data["status"] = json!("resolved");
                         data["resolution"] = json!({"summary":text(&request.input,"summary")?,"result_refs":refs,"company_revision":company.revision,"resolved_at":now()});
+                        if has_aftermath {
+                            let rows = query!(&sql(self.pg,
+                                "SELECT data FROM record_versions WHERE company_id=? AND kind IN ('decision','report','simulation_turn')"))
+                                .bind(&company.id).fetch_all(&mut **tx).await?;
+                            let mut versions = rows
+                                .iter()
+                                .map(|row| {
+                                    let encoded = row.try_get::<String, _>("data")?;
+                                    Ok(serde_json::from_str::<Record>(&encoded)?)
+                                })
+                                .collect::<Result<Vec<_>>>()?;
+                            let mut proposed = old_record.clone();
+                            proposed.revision += 1;
+                            proposed.company_revision = company.revision + 1;
+                            proposed.data = data.clone();
+                            versions.push(proposed);
+                            company_core::gameplay::validate_story_history(company, &versions)?;
+                        }
                     }
                     "decision.cancel" => {
                         if !matches!(

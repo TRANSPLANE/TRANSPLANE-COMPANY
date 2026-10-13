@@ -16,6 +16,7 @@ import { Status } from "./components";
 import { TurnState } from "./TurnState";
 import { narrative } from "./narrativeCopy";
 import { DecisionSettlement, decisionSelectionText, decisionStatus } from "./Play";
+import { ForecastContext } from "./ForecastContext";
 import type { Json, RecordEntry, RecordKind, Snapshot } from "./types";
 import { gameSystemsCopy as gameText, gameLabel } from "./gameSystemsCopy";
 
@@ -235,6 +236,7 @@ export function RecordPresentation({
               [text.baselineVersion, num(d.baseline_revision)],
             ]}
           />
+          <ForecastContext record={record} />
           <Assumptions values={arr(d.assumptions)} />
           {arr(d.scenarios).length > 0 && (
             <section className="record-section">

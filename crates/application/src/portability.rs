@@ -512,6 +512,7 @@ fn validate_contents(content: &Contents) -> Result<RestoreValidation> {
     let mut currents: BTreeMap<(String, String, String), Record> = BTreeMap::new();
     let mut revision_counts = BTreeMap::new();
     let mut global_revisions = BTreeMap::new();
+    let mut result_bindings: BTreeMap<(String, String, String), Value> = BTreeMap::new();
     let mut blobs = BTreeMap::new();
     for (digest, encoded) in &content.blobs {
         digest_identifier(digest)?;
@@ -584,6 +585,33 @@ fn validate_contents(content: &Contents) -> Result<RestoreValidation> {
         {
             return Err(err("integrity_error", "Skill 模板来源不能在历史版本中改变"));
         }
+        if ["report", "simulation_turn"].contains(&r.kind.as_str())
+            && let Some(previous) = currents.get(&k)
+            && (previous.data.get("aftermath").is_some() || r.data.get("aftermath").is_some())
+            && previous.data.get("decision_id") != r.data.get("decision_id")
+        {
+            return Err(err(
+                "integrity_error",
+                "经营后果关联的事件不能在历史版本中改变",
+            ));
+        }
+        if ["report", "simulation_turn"].contains(&r.kind.as_str()) {
+            if let Some(bound) = result_bindings.get(&k)
+                && r.data.get("decision_id") != Some(bound)
+            {
+                return Err(err(
+                    "integrity_error",
+                    "经营后果关联的事件不能在历史版本中改变",
+                ));
+            }
+            if r.data.get("aftermath").is_some()
+                || (r.kind == "simulation_turn" && r.data.get("decision_id").is_some())
+            {
+                result_bindings
+                    .entry(k.clone())
+                    .or_insert_with(|| r.data["decision_id"].clone());
+            }
+        }
         currents.insert(k, r.clone());
     }
     let mut by_company: BTreeMap<String, Vec<Record>> = BTreeMap::new();
@@ -621,12 +649,15 @@ fn validate_contents(content: &Contents) -> Result<RestoreValidation> {
                 }
             }
         }
+        let aftermath_before_write = ["report", "simulation_turn"].contains(&record.kind.as_str())
+            && record.data.get("aftermath").is_some();
         let historical_context;
         let records = if record.kind == "decision" {
             historical_context = decision_references_at(record, &by_resource)?;
             &historical_context
         } else if company_core::network::RECORD_KINDS.contains(&record.kind.as_str())
             || ["quest", "alert"].contains(&record.kind.as_str())
+            || aftermath_before_write
         {
             historical_context = by_resource
                 .iter()
@@ -634,7 +665,13 @@ fn validate_contents(content: &Contents) -> Result<RestoreValidation> {
                 .filter_map(|(_, versions)| {
                     versions
                         .iter()
-                        .filter(|v| v.company_revision <= record.company_revision)
+                        .filter(|v| {
+                            if aftermath_before_write {
+                                v.company_revision < record.company_revision
+                            } else {
+                                v.company_revision <= record.company_revision
+                            }
+                        })
                         .max_by_key(|v| v.revision)
                         .map(|v| (*v).clone())
                 })
@@ -659,6 +696,8 @@ fn validate_contents(content: &Contents) -> Result<RestoreValidation> {
         let records = by_company.get(&company.id).cloned().unwrap_or_default();
         company_core::network::validate_graph_records(company, &records, &content.versions)?;
         company_core::game_systems::validate_game_history(company, &content.versions)?;
+        company_core::gameplay::validate_story_history(company, &content.versions)?;
+        super::studio::validate_archive(company, &content.versions, &content.company_versions)?;
         company_core::game_systems::validate_game_results(
             company,
             &content.versions,
@@ -780,6 +819,15 @@ fn decision_references_at(
             }
         }
     }
+    for callback in decision.data["experience"]["callbacks"]
+        .as_array()
+        .into_iter()
+        .flatten()
+    {
+        if let Some(id) = callback["decision_id"].as_str() {
+            references.push(("decision", id));
+        }
+    }
     for (kind, id) in references {
         if let Some(version) = by_resource
             .get(&(decision.company_id.as_str(), kind, id))
@@ -845,16 +893,34 @@ fn validate_decision_history(
                 })
                 .max_by_key(|record| record.company_revision)
                 .ok_or_else(|| err("integrity_error", "回合关联的经营事件不存在"))?;
-            let selected_revision = selected
-                .data
-                .get("claim")
-                .and_then(|claim| claim.get("selection_company_revision"))
-                .and_then(Value::as_i64)
-                .unwrap_or(selected.company_revision);
-            if !matches!(
-                selected.data["status"].as_str(),
-                Some("selected" | "processing")
-            ) || integer(&turn.data, "before_revision")? != selected_revision
+            let previous_turn = exact.get(&(
+                turn.company_id.as_str(),
+                "simulation_turn",
+                turn.id.as_str(),
+                turn.revision - 1,
+            ));
+            let settled_correction = selected.data["status"] == "resolved"
+                && previous_turn.is_some_and(|previous| {
+                    previous.company_revision < turn.company_revision
+                        && previous.data.get("decision_id") == turn.data.get("decision_id")
+                        && previous.data["before_revision"] == turn.data["before_revision"]
+                });
+            let selected_revision = if settled_correction {
+                integer(&previous_turn.unwrap().data, "before_revision")?
+            } else {
+                selected
+                    .data
+                    .get("claim")
+                    .and_then(|claim| claim.get("selection_company_revision"))
+                    .and_then(Value::as_i64)
+                    .unwrap_or(selected.company_revision)
+            };
+            if (!settled_correction
+                && !matches!(
+                    selected.data["status"].as_str(),
+                    Some("selected" | "processing")
+                ))
+                || integer(&turn.data, "before_revision")? != selected_revision
             {
                 return Err(err("integrity_error", "回合起点与经营事件选择不匹配"));
             }
